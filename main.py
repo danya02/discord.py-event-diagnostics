@@ -1,7 +1,8 @@
 import discord
 import datetime
 
-client = discord.Client()
+intents = discord.Intents.all()
+client = discord.Client(intents=intents)
 
 def log(*lines):
     print(datetime.datetime.now().isoformat(), *lines)
@@ -78,7 +79,14 @@ events = [
         ('on_relationship_update', ['before', 'after']),
 ]
 
+ignored_events = {'on_socket_raw_send', 'on_socket_raw_receive'}
+
+special_actions = {
+        'on_message': lambda args, kwargs: print("[[message.content == ", repr(args[0].content), "]]", sep=''),
+}
+
 for name, target_args in events:
+    if name in ignored_events: continue
     async def ev(*args, __name=name, __target_args=target_args, **kwargs):
         arg_lines = []
         if args: arg_lines.append('')
@@ -95,7 +103,17 @@ for name, target_args in events:
 
         log_line = f"{__name}(" + '\n'.join(arg_lines) + ')'
         log(log_line)
+        if __name in special_actions:
+            special_actions[__name](args, kwargs)
 
     setattr(client, name, ev)
+
+print("Enabled intents:", intents)
+if ignored_events:
+    print("Note: these events are ignored:")
+    for i in ignored_events:
+        print("-", ignored_events)
+
+    print("If you would like to print those as well, edit this program.")
 
 client.run(input("TOKEN: "))
